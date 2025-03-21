@@ -60,12 +60,6 @@ func simulateModel(c *gin.Context) {
 		"object": "list",
 		"data": []gin.H{
 			{
-				"id":       "gpt-3.5-turbo",
-				"object":   "model",
-				"created":  1688888888,
-				"owned_by": "chatgpt-to-api",
-			},
-			{
 				"id":       "gpt-4",
 				"object":   "model",
 				"created":  1688888888,
@@ -73,6 +67,12 @@ func simulateModel(c *gin.Context) {
 			},
 			{
 				"id":       "gpt-4o",
+				"object":   "model",
+				"created":  1688888888,
+				"owned_by": "chatgpt-to-api",
+			},
+			{
+				"id":       "gpt-4.5",
 				"object":   "model",
 				"created":  1688888888,
 				"owned_by": "chatgpt-to-api",
@@ -90,7 +90,13 @@ func simulateModel(c *gin.Context) {
 				"owned_by": "chatgpt-to-api",
 			},
 			{
-				"id":       "o1-mini",
+				"id":       "o3-mini",
+				"object":   "model",
+				"created":  1688888888,
+				"owned_by": "chatgpt-to-api",
+			},
+			{
+				"id":       "o3-mini-high",
 				"object":   "model",
 				"created":  1688888888,
 				"owned_by": "chatgpt-to-api",
