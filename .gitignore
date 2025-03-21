@@ -1,12 +1,25 @@
+# tools
 tools/authenticator/100-ACCOUNTS_COMPILED.txt
 tools/authenticator/accounts.txt
 tools/authenticator/proxies.txt
 tools/authenticator/authenticated_accounts.txt
 tools/authenticator/access_tokens.txt
+tools/authenticator/.proxies.txt.swp
+
+# build
+freechatgpt
+freechatgpt.exe
+chatgpttoapi
+
+# env
+.env
+
+# har
+*.har
+
+# secrets
 *.txt
 *.json
-freechatgpt
-chatgpttoapi
-tools/authenticator/.proxies.txt.swp
-.env
-*.har
+
+# log
+*.log
