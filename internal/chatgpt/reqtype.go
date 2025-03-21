@@ -230,7 +230,7 @@ func NewChatGPTRequest() ChatGPTRequest {
 	return ChatGPTRequest{
 		Action:                     "next",
 		ParentMessageID:            uuid.NewString(),
-		Model:                      "text-davinci-002-render-sha",
+		Model:                      "gpt-4o-mini",
 		HistoryAndTrainingDisabled: disable_history,
 		ConversationMode:           ChatGPTConvMode{Kind: "primary_assistant"},
 		WebsocketRequestId:         uuid.NewString(),
