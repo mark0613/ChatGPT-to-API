@@ -11,8 +11,9 @@ require (
 	github.com/go-resty/resty/v2 v2.12.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mark0613/OpenAIAuth v0.1.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/tidwall/gjson v1.17.1
-	github.com/xqdoo00o/OpenAIAuth v0.0.0-20250123201147-b6e4778be9f3
 	golang.org/x/crypto v0.23.0
 	golang.org/x/image v0.15.0
 	k8s.io/apimachinery v0.29.3
@@ -24,9 +25,11 @@ require (
 	github.com/bogdanfinn/utls v1.6.1 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cloudflare/circl v1.3.8 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

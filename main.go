@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	chatgpt_types "freechatgpt/internal/chatgpt"
+	"freechatgpt/internal/otp"
 
 	"github.com/acheong08/endless"
 	"github.com/gin-gonic/gin"
@@ -60,9 +61,16 @@ func init() {
 	checkProxy()
 	readAccounts()
 	scheduleTokenPUID()
+
+	err := otp.InitOTP()
+	if err != nil {
+		println("Warning: Failed to initialize OTP service:", err.Error())
+		println("OTP functionality will not be available")
+	}
 }
 func main() {
 	defer chatgpt_types.SaveFileHash()
+	defer otp.CloseOTP()
 	router := gin.Default()
 
 	router.Use(cors)

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
@@ -11,9 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"freechatgpt/internal/otp"
 	"freechatgpt/internal/tokens"
 
-	"github.com/xqdoo00o/OpenAIAuth/auth"
+	"github.com/mark0613/OpenAIAuth/auth"
 )
 
 var accounts map[string]AccountInfo
@@ -232,6 +235,37 @@ func updateSingleToken(email string, password string, token_list map[string]toke
 		proxies = append(proxies[1:], proxies[0])
 	}
 	authenticator := auth.NewAuthenticator(email, password, proxy_url)
+
+	var otpRequestID string
+
+	authenticator.SetOTPCallbacks(
+		func(email string) error {
+			fmt.Printf("需要為 %s 請求 OTP\n", email)
+			requestID, err := otp.NotifyOTPRequired(email)
+			if err != nil {
+				return fmt.Errorf("failed to notify OTP requirement: %w", err)
+			}
+			otpRequestID = requestID
+			fmt.Printf("OTP 請求已發送，請求 ID: %s\n", requestID)
+			return nil
+		},
+
+		func(email string) (string, error) {
+			fmt.Printf("等待 %s 的 OTP...\n", email)
+			if otpRequestID == "" {
+				return "", errors.New("no OTP request ID available")
+			}
+
+			otp, err := otp.WaitForOTP(email, otpRequestID, 5*time.Minute)
+			if err != nil {
+				return "", fmt.Errorf("failed to receive OTP: %w", err)
+			}
+
+			fmt.Printf("收到 OTP: %s\n", otp)
+			return otp, nil
+		},
+	)
+
 	err := authenticator.RenewWithCookies()
 	if err != nil {
 		authenticator.ResetCookies()
