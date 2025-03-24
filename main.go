@@ -60,13 +60,12 @@ func init() {
 	}
 	checkProxy()
 	readAccounts()
-	scheduleTokenPUID()
-
 	err := otp.InitOTP()
 	if err != nil {
 		println("Warning: Failed to initialize OTP service:", err.Error())
 		println("OTP functionality will not be available")
 	}
+	scheduleTokenPUID()
 }
 func main() {
 	defer chatgpt_types.SaveFileHash()
