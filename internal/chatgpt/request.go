@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"regexp"
 
 	_ "time/tzdata"
 
@@ -379,6 +380,17 @@ func GetImageSource(wg *sync.WaitGroup, url string, prompt string, secret *token
 	// }
 }
 
+func cleanChatGPTResponseText(text string) string {
+	text = regexp.MustCompile(`[\x{e200}-\x{e2ff}]`).ReplaceAllString(text, "")
+	text = regexp.MustCompile(`cite(turn|)[0-9]*(search|)[0-9]*`).ReplaceAllString(text, "")
+	specialChars := []string{"⭐", "★", "☆", "◯", "◉", "⬤", "⚫", "⚪", "●", "○"}
+	for _, char := range specialChars {
+		text = strings.ReplaceAll(text, char, "")
+	}
+	return strings.TrimSpace(text)
+}
+
+
 func Handler(c *gin.Context, response *http.Response, secret *tokens.Secret, proxy string, deviceId string, uuid string, stream bool) (string, *ContinueInfo) {
 	max_tokens := false
 
@@ -431,6 +443,13 @@ func Handler(c *gin.Context, response *http.Response, secret *tokens.Secret, pro
 			if original_response.Message.ID == "" {
 				continue
 			}
+
+			if original_response.Message.Content.Parts != nil && len(original_response.Message.Content.Parts) > 0 {
+                if contentStr, ok := original_response.Message.Content.Parts[0].(string); ok && contentStr != "" {
+                    original_response.Message.Content.Parts[0] = cleanChatGPTResponseText(contentStr)
+                }
+            }
+
 			if original_response.ConversationID != convId {
 				if convId == "" {
 					convId = original_response.ConversationID
@@ -457,10 +476,22 @@ func Handler(c *gin.Context, response *http.Response, secret *tokens.Secret, pro
 			if original_response.Message.EndTurn != nil && !original_response.Message.EndTurn.(bool) {
 				msgId = ""
 			}
-			if len(original_response.Message.Metadata.Citations) != 0 {
+			// Check if this is a search result
+			isSearchResult := false
+			if len(original_response.Message.Metadata.SearchResultGroups) > 0 || len(original_response.Message.Metadata.ContentReferences) > 0 {
+				isSearchResult = true
+			}
+
+			// Handle citations differently for search results
+			if len(original_response.Message.Metadata.Citations) != 0 && !isSearchResult {
 				r := []rune(original_response.Message.Content.Parts[0].(string))
 				offset := 0
 				for _, citation := range original_response.Message.Metadata.Citations {
+					// Skip special characters like \ue203 which are used for citations in the UI
+					if citation.StartIx == 0 && citation.EndIx == 1 {
+						continue
+					}
+					
 					rl := len(r)
 					u, _ := url.Parse(citation.Metadata.URL)
 					baseURL := u.Scheme + "://" + u.Host + "/"
@@ -477,8 +508,99 @@ func Handler(c *gin.Context, response *http.Response, secret *tokens.Secret, pro
 					offset += len(r) - rl
 				}
 			}
+			// Reset search result flag for this part of the code
+			isSearchResult = false
+			if len(original_response.Message.Metadata.SearchResultGroups) > 0 || len(original_response.Message.Metadata.ContentReferences) > 0 {
+				isSearchResult = true
+			}
+
 			response_string := ""
-			if original_response.Message.Content.ContentType == "multimodal_text" {
+			if isSearchResult {
+				// For search results, use the same incremental update mechanism as regular responses
+				currentContent := original_response.Message.Content.Parts[0].(string)
+				
+				if isRole {
+					translated_response := official_types.NewChatCompletionChunk("")
+					translated_response.Choices[0].Delta.Role = original_response.Message.Author.Role
+					previous_text.Text = currentContent
+					response_string = "data: " + translated_response.String() + "\n\n"
+					isRole = false
+					
+					// Debug
+					println("Search result - Role message, content length:", len(currentContent))
+				} else {
+					// For search results, we need special handling
+					var newContent string
+					
+					// Check if this is a completely new message (e.g., when switching from search results to actual content)
+					if !strings.Contains(currentContent, previous_text.Text) &&
+					   !strings.Contains(previous_text.Text, currentContent) &&
+					   len(previous_text.Text) > 0 &&
+					   len(currentContent) > 0 {
+						// This appears to be completely new content
+						println("Search result - Completely new content detected")
+						newContent = currentContent
+					} else {
+						// Normal case - extract the new content
+						newContent = strings.Replace(currentContent, previous_text.Text, "", 1)
+					}
+					
+					// Debug
+					println("Search result - Content update, previous length:", len(previous_text.Text),
+						", current length:", len(currentContent),
+						", new content length:", len(newContent))
+					
+					// Special handling for search results with special characters
+					if strings.Contains(newContent, "\ue203") {
+						// This is a special character used for citations in the UI
+						// Replace it with an empty string
+						newContent = strings.Replace(newContent, "\ue203", "", -1)
+						println("Search result - Removed special character \\ue203")
+					}
+					
+					// More aggressive approach to handle repeated text
+					// For search results, we'll just send the difference between the current and previous content
+					if strings.HasPrefix(currentContent, "截至") {
+						// This is likely a search result with the date/time prefix
+						// Check if we have repeated text
+						
+						// First, try to find the longest common prefix between the new content and the previous content
+						maxPrefixLen := 0
+						for i := 1; i < len(newContent) && i < len(previous_text.Text); i++ {
+							if strings.HasPrefix(newContent, previous_text.Text[:i]) {
+								maxPrefixLen = i
+							}
+						}
+						
+						if maxPrefixLen > 0 {
+							// Remove the repeated prefix
+							newContent = newContent[maxPrefixLen:]
+							println("Search result - Removed repeated prefix, length:", maxPrefixLen)
+						}
+						
+						// Also check for repeated text within the new content itself
+						// This handles cases like "截至2025年截至2025年3月"
+						for i := 1; i < len(newContent)/2; i++ {
+							if strings.HasPrefix(newContent[i:], newContent[:i]) {
+								// Found a repeated pattern
+								newContent = newContent[:i] + newContent[i+i:]
+								println("Search result - Removed internal repetition, pattern length:", i)
+								break
+							}
+						}
+					}
+					
+					if newContent == "" {
+						// Skip empty updates
+						println("Search result - Skipping empty update")
+						continue
+					}
+					
+					translated_response := official_types.NewChatCompletionChunk(newContent)
+					previous_text.Text = currentContent
+					response_string = "data: " + translated_response.String() + "\n\n"
+				}
+			} else if original_response.Message.Content.ContentType == "multimodal_text" {
 				apiUrl := "https://chatgpt.com/backend-api/files/"
 				if FILES_REVERSE_PROXY != "" {
 					apiUrl = FILES_REVERSE_PROXY
@@ -514,9 +636,9 @@ func Handler(c *gin.Context, response *http.Response, secret *tokens.Secret, pro
 				if err != nil {
 					return "", nil
 				}
+				// Flush immediately after writing each chunk to reduce latency
+				c.Writer.Flush()
 			}
-			// Flush the response writer buffer to ensure that the client receives each line as it's written
-			c.Writer.Flush()
 
 			if original_response.Message.Metadata.FinishDetails != nil {
 				if original_response.Message.Metadata.FinishDetails.Type == "max_tokens" {
@@ -536,6 +658,7 @@ func Handler(c *gin.Context, response *http.Response, secret *tokens.Secret, pro
 		respText += "\n"
 	}
 	respText += previous_text.Text
+	respText = cleanChatGPTResponseText(respText)
 	if !max_tokens {
 		return respText, nil
 	}

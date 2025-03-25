@@ -51,10 +51,45 @@ type Author struct {
 }
 
 type Metadata struct {
-	Citations     []Citation     `json:"citations,omitempty"`
-	MessageType   string         `json:"message_type"`
-	FinishDetails *FinishDetails `json:"finish_details"`
-	ModelSlug     string         `json:"model_slug"`
+	Citations         []Citation         `json:"citations,omitempty"`
+	ContentReferences []ContentReference `json:"content_references,omitempty"`
+	SearchResultGroups []SearchResultGroup `json:"search_result_groups,omitempty"`
+	SafeURLs          []string           `json:"safe_urls,omitempty"`
+	MessageType       string             `json:"message_type"`
+	FinishDetails     *FinishDetails     `json:"finish_details"`
+	ModelSlug         string             `json:"model_slug"`
+}
+
+type ContentReference struct {
+	MatchedText string   `json:"matched_text"`
+	StartIdx    int      `json:"start_idx"`
+	EndIdx      int      `json:"end_idx"`
+	Refs        []string `json:"refs"`
+	Type        string   `json:"type"`
+	Invalid     bool     `json:"invalid"`
+}
+
+type SearchResultGroup struct {
+	Type    string         `json:"type"`
+	Domain  string         `json:"domain"`
+	Entries []SearchResult `json:"entries"`
+}
+
+type SearchResult struct {
+	Type        string      `json:"type"`
+	URL         string      `json:"url"`
+	Title       string      `json:"title"`
+	Snippet     string      `json:"snippet"`
+	RefID       RefID       `json:"ref_id"`
+	ContentType interface{} `json:"content_type"`
+	PubDate     float64     `json:"pub_date,omitempty"`
+	Attribution string      `json:"attribution"`
+}
+
+type RefID struct {
+	TurnIndex int    `json:"turn_index"`
+	RefType   string `json:"ref_type"`
+	RefIndex  int    `json:"ref_index"`
 }
 type Citation struct {
 	Metadata CitaMeta `json:"metadata"`
