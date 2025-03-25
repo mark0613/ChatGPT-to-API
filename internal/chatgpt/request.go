@@ -383,10 +383,6 @@ func GetImageSource(wg *sync.WaitGroup, url string, prompt string, secret *token
 func cleanChatGPTResponseText(text string) string {
 	text = regexp.MustCompile(`[\x{e200}-\x{e2ff}]`).ReplaceAllString(text, "")
 	text = regexp.MustCompile(`cite(turn|)[0-9]*(search|)[0-9]*`).ReplaceAllString(text, "")
-	specialChars := []string{"⭐", "★", "☆", "◯", "◉", "⬤", "⚫", "⚪", "●", "○"}
-	for _, char := range specialChars {
-		text = strings.ReplaceAll(text, char, "")
-	}
 	return strings.TrimSpace(text)
 }
 
